@@ -116,6 +116,19 @@ module.exports = function() {
             limit: 9999,
           })
         )
+        .then(results => {
+          let partsToDelete = []
+          for(let i = 0; i < results.items.length; ++i){
+            let part = results.items[i]
+            if (part.location.type === 'API' || this.documentationParts.some(e => ((e.location.path && e.location.path[0] === '/' ? e.location.path : '/' + e.location.path) === part.location.path))){
+              partsToDelete.push(part)
+            }
+
+            //Caso seja modelos não posso deixar serem criados novamente
+            this.documentationParts = this.documentationParts.filter(e => !(e.location.name === part.location.name && part.location.type === 'MODEL'))
+          }
+          return { items: partsToDelete }
+        })
         .then(results => results.items.map(
           part => aws.request('APIGateway', 'deleteDocumentationPart', {
             documentationPartId: part.id,
@@ -160,6 +173,21 @@ module.exports = function() {
           .forEach(currEvent => {
             let key = functionName + currEvent.method + currEvent.path;
             documentationObj[key] = currEvent;
+
+            if(currEvent.cors){
+              //Add other documentation to option cors
+              const keyOptions = functionName + 'options' + currEvent.path
+              documentationObj[keyOptions] =
+                {
+                  path: currEvent.path,
+                  method: 'options',
+                  integration: 'AWS',
+                  documentation: {
+                    tags: currEvent.documentation.tags,
+                  }
+                }
+            }
+
           });
         return documentationObj;
       }, {});
@@ -169,12 +197,17 @@ module.exports = function() {
       const versionObject = {
         globalDocs: this.customVars.documentation,
         functionDocs: {},
+        cors: false
       }
 
       const httpEvents = this._getHttpEvents();
       Object.keys(httpEvents).forEach(funcName => {
         versionObject.functionDocs[funcName] = httpEvents[funcName].documentation;
+        //levar em consideração se existe cors ou não
+        versionObject.functionDocs[funcName].cors = httpEvents[funcName].cors ? true : false
       });
+
+      versionObject.timestamp = Date.now()
 
       autoVersion = objectHash(versionObject);
 
