@@ -95,6 +95,10 @@ module.exports = function() {
 
     _updateDocumentation: function _updateDocumentation() {
       const aws = this.serverless.providers.aws;
+      
+      // removing duplicated parts
+      this.documentationParts = [...new Set(this.documentationParts.map(s => JSON.stringify(s)))].map(s => JSON.parse(s))
+      
       return aws.request('APIGateway', 'getDocumentationVersion', {
         restApiId: this.restApiId,
         documentationVersion: this.getDocumentationVersion(),
@@ -120,12 +124,12 @@ module.exports = function() {
           let partsToDelete = []
           for(let i = 0; i < results.items.length; ++i){
             let part = results.items[i]
-            if (part.location.type === 'API' || this.documentationParts.some(e => ((e.location.path && e.location.path[0] === '/' ? e.location.path : '/' + e.location.path) === part.location.path))){
+            if (part.location.type === "API" || this.documentationParts.some(e => ((e.location.path && e.location.path[0] === '/' ? e.location.path : '/' + e.location.path) === part.location.path))){
               partsToDelete.push(part)
             }
 
             //Caso seja modelos não posso deixar serem criados novamente
-            this.documentationParts = this.documentationParts.filter(e => !(e.location.name === part.location.name && part.location.type === 'MODEL'))
+            this.documentationParts = this.documentationParts.filter(e => !(e.location.name === part.location.name && part.location.type === "MODEL"))
           }
           return { items: partsToDelete }
         })

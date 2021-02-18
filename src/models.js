@@ -26,7 +26,7 @@ function replaceModelRefs(restApiId, cfModel) {
                     }
                     cfModel.DependsOn.add(match[1]+'Model');
                 }
-            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+            } else if (typeof obj[key] === 'object') {
                 replaceRefs(obj[key]);
             }
         }
